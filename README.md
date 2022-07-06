@@ -1,4 +1,11 @@
 # Hand-Drawn-Region-Random-Points
+Require:
+Visual Studio 2019
+
+Install:
+double click .sln
+
+
 Notice：
 1. Region can only be drawn sequentially and overlaid.
 2. Unable to delete existing region.
