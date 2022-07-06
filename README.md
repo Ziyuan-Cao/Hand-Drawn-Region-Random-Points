@@ -1,9 +1,10 @@
 # Hand-Drawn-Region-Random-Points
+
 Require:
 Visual Studio 2019
 
 Install:
-double click .sln
+Double click .sln
 
 
 Notice：
