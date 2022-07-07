@@ -32,15 +32,15 @@ int Length = 1000;
 int width = 0;
 int height = 0;
 
-//The data of the point contains the markers of the xy coordinates and the region number
+//The data of the point contains the markers of the xy coordinates and the region ID
 struct point
 {
 	int X = 0;
 	int Y = 0;
 	int Z = 0;
-	int Number = 0;
+	int ID = 0;
 
-	point(int ix, int iy,int iz, int inumber) : X(ix), Y(iy),Z(iz), Number(inumber) {}
+	point(int ix, int iy,int iz, int iid) : X(ix), Y(iy),Z(iz), ID(iid) {}
 
 
 	void Normalize(float & ox, float &oy, float &oz)
@@ -70,7 +70,7 @@ struct Region
 	int Y_min = Height;
 	int Center_X = 0;
 	int Center_Y = 0;
-	int Number = 0;
+	int ID = 0;
 
 	vector<point> EdgePoints; //the edge of the region
 	vector<point> GrowPoints; //Nutrient points in each region
@@ -83,7 +83,7 @@ vector<vector<int>> Figure; //the final result map
 vector<Region> RegionGroup; 
 
 //process variable
-int number = 0;
+int currentid = 0;
 bool Isdrawing = false;
 vector<point> Region_Buffer;
 
@@ -104,9 +104,9 @@ void GrowPointInsert(Region & IORegion)
 		int Rx = Rnd1 % (IORegion.X_max - IORegion.X_min) + IORegion.X_min;
 		int Ry = Rnd2 % (IORegion.Y_max - IORegion.Y_min) + IORegion.Y_min;
 		//Check if the generated point is inside this region
-		if (Figure[Ry][Rx] == IORegion.Number)
+		if (Figure[Ry][Rx] == IORegion.ID)
 		{
-			IORegion.GrowPoints.push_back(point(Rx, Ry,0, IORegion.Number));
+			IORegion.GrowPoints.push_back(point(Rx, Ry,0, IORegion.ID));
 			count++;
 		}
 		maxiter--;
@@ -114,33 +114,33 @@ void GrowPointInsert(Region & IORegion)
 }
 
 //Fill the entire region with depth traversal Depth-First-Search
-void DeepFill(int Ix, int Iy,int Inumber)
+void DeepFill(int Ix, int Iy,int Iid)
 {
 	stack<point> fillstack;
 
-	fillstack.push(point(Ix, Iy, 0, Inumber));
+	fillstack.push(point(Ix, Iy, 0, Iid));
 
 	while (!fillstack.empty())
 	{
 		int y = fillstack.top().Y;
 		int x = fillstack.top().X;
 		fillstack.pop();
-		Figure[y][x] = Inumber;
-		if (y + 1 < Height && Figure[y + 1][x] != Inumber)
+		Figure[y][x] = Iid;
+		if (y + 1 < Height && Figure[y + 1][x] != Iid)
 		{
-			fillstack.push(point(x, y + 1,0, Inumber));
+			fillstack.push(point(x, y + 1,0, Iid));
 		}
-		if (y-1 >= 0 && Figure[y-1][x] != Inumber)
+		if (y-1 >= 0 && Figure[y-1][x] != Iid)
 		{
-			fillstack.push(point(x, y - 1, 0, Inumber));
+			fillstack.push(point(x, y - 1, 0, Iid));
 		}
-		if (x + 1 < Width && Figure[y][x+1] != Inumber)
+		if (x + 1 < Width && Figure[y][x+1] != Iid)
 		{
-			fillstack.push(point(x + 1, y, 0, Inumber));
+			fillstack.push(point(x + 1, y, 0, Iid));
 		}
-		if (x-1 >= 0 && Figure[y][x-1] != Inumber)
+		if (x-1 >= 0 && Figure[y][x-1] != Iid)
 		{
-			fillstack.push(point(x - 1, y, 0, Inumber));
+			fillstack.push(point(x - 1, y, 0, Iid));
 		}
 	}
 
@@ -149,7 +149,7 @@ void DeepFill(int Ix, int Iy,int Inumber)
 //Pixel-based two-point line interpolation function
 void connect(point IP1, point IP2, vector<point>& Iregionbuffer)
 {
-	//printf("(%d,%d) --- (%d,%d) , %d\n", IP1.x, IP1.y, IP2.x, IP2.y, number);
+	//printf("(%d,%d) --- (%d,%d) , %d\n", IP1.x, IP1.y, IP2.x, IP2.y, currentid);
 	if (IP1.X == IP2.X && IP1.Y == IP2.Y)
 	{
 		Iregionbuffer.push_back(IP1);
@@ -159,12 +159,12 @@ void connect(point IP1, point IP2, vector<point>& Iregionbuffer)
 		if (IP1.Y < IP2.Y)
 			for (int y = IP1.Y; y < IP2.Y; y++)
 			{
-				Iregionbuffer.push_back(point(IP1.X, y, 0, number));
+				Iregionbuffer.push_back(point(IP1.X, y, 0, currentid));
 			}
 		if (IP2.Y < IP1.Y)
 			for (int y = IP2.Y; y < IP1.Y; y++)
 			{
-				Iregionbuffer.push_back(point(IP1.X, y, 0, number));
+				Iregionbuffer.push_back(point(IP1.X, y, 0, currentid));
 			}
 		return;
 	}
@@ -173,12 +173,12 @@ void connect(point IP1, point IP2, vector<point>& Iregionbuffer)
 		if (IP1.X < IP2.X)
 			for (int x = IP1.X; x < IP2.X; x++)
 			{
-				Iregionbuffer.push_back(point(x, IP1.Y, 0, number));
+				Iregionbuffer.push_back(point(x, IP1.Y, 0, currentid));
 			}
 		if (IP2.X < IP1.X)
 			for (int x = IP2.X; x < IP1.X; x++)
 			{
-				Iregionbuffer.push_back(point(x, IP1.Y, 0, number));
+				Iregionbuffer.push_back(point(x, IP1.Y, 0, currentid));
 			}
 		return;
 	}
@@ -190,7 +190,7 @@ void connect(point IP1, point IP2, vector<point>& Iregionbuffer)
 			for (int y = IP2.Y; y < IP1.Y; y++)
 			{
 				int x = ((float)y - IP1.Y) / (IP2.Y - IP1.Y) * (IP2.X - IP1.X) + IP1.X;
-				point linepoint(x, y, 0, number);
+				point linepoint(x, y, 0, currentid);
 				Iregionbuffer.push_back(linepoint);
 			}
 		}
@@ -199,7 +199,7 @@ void connect(point IP1, point IP2, vector<point>& Iregionbuffer)
 			for (int y = IP2.Y; y >= IP1.Y; y--)
 			{
 				int x = ((float)y - IP1.Y) / (IP2.Y - IP1.Y) * (IP2.X - IP1.X) + IP1.X;
-				point linepoint(x, y, 0, number);
+				point linepoint(x, y, 0, currentid);
 				Iregionbuffer.push_back(linepoint);
 			}
 		}
@@ -211,7 +211,7 @@ void connect(point IP1, point IP2, vector<point>& Iregionbuffer)
 			for (int x = IP2.X; x < IP1.X; x++)
 			{
 				int y = ((float)x - IP1.X) / (IP2.X - IP1.X) * (IP2.Y - IP1.Y) + IP1.Y;
-				point linepoint(x, y, 0, number);
+				point linepoint(x, y, 0, currentid);
 				Iregionbuffer.push_back(linepoint);
 			}
 		}
@@ -220,7 +220,7 @@ void connect(point IP1, point IP2, vector<point>& Iregionbuffer)
 			for (int x = IP2.X; x >= IP1.X; x--)
 			{
 				int y = ((float)x - IP1.X) / (IP2.X - IP1.X) * (IP2.Y - IP1.Y) + IP1.Y;
-				point linepoint(x, y, 0, number);
+				point linepoint(x, y, 0, currentid);
 				Iregionbuffer.push_back(linepoint);
 			}
 		}
@@ -236,7 +236,7 @@ void CreateRegion(vector<point>& IRegion_Buffer)
 	//and the connection function needs to be used to connect 
 	//the path into a loop.
 	Region Newregion;
-	Newregion.Number = number;
+	Newregion.ID = currentid;
 	for (int i = 0; i < IRegion_Buffer.size() - 1; i++)
 	{
 		connect(IRegion_Buffer[i], IRegion_Buffer[i + 1], Newregion.EdgePoints);
@@ -327,17 +327,34 @@ void FigureRefresh()
 			{
 				for (int l = 0; l < PixelSize; l++)
 				{
-					Figure[y+k][x+l] = RegionGroup[i].Number;
+					Figure[y+k][x+l] = RegionGroup[i].ID;
 				}
 			}
 		}
 
 		//Fill the entire region with depth traversal
 		//begin with the center point 
-		DeepFill(RegionGroup[i].Center_X, RegionGroup[i].Center_Y, RegionGroup[i].Number);
+		DeepFill(RegionGroup[i].Center_X, RegionGroup[i].Center_Y, RegionGroup[i].ID);
 
 	}
 
+	//Refresh grow points to avoid mixing
+	for (int i = 0; i < RegionGroup.size(); i++)
+	{
+		vector<point> NewGrowPoints;
+		for (int j = 0; j < RegionGroup[i].GrowPoints.size(); j++)
+		{
+			int x = RegionGroup[i].GrowPoints[j].X;
+			int y = RegionGroup[i].GrowPoints[j].Y;
+			if (RegionGroup[i].ID == Figure[y][x])
+			{
+				NewGrowPoints.push_back(RegionGroup[i].GrowPoints[j]);
+			}
+			
+		}
+		RegionGroup[i].GrowPoints.clear();
+		RegionGroup[i].GrowPoints = NewGrowPoints;
+	}
 	
 }
 
@@ -386,34 +403,32 @@ void display(void)
 		glClear(GL_COLOR_BUFFER_BIT);
 		glLoadIdentity();
 
-		srand(time(0));
-
 		glPointSize(PixelSize);
 		glBegin(GL_POINTS);
 		for (int i = 0; i < Height; i++)
 		{
 			for (int j = 0; j < Width; j++)
 			{
-				if (Figure[i][j] >-1)
+				if (Figure[i][j] > -1)
 				{
 					float r = RegionGroup[Figure[i][j]].RegionColor.R;
 					float g = RegionGroup[Figure[i][j]].RegionColor.G;
 					float b = RegionGroup[Figure[i][j]].RegionColor.B;
-					
+
 					point ijpoint(j, i, 0, -1);
 					float x = 0;
 					float y = 0;
 					float z = 0;
 					ijpoint.Normalize(x, y, z);
-						glColor3f(r,g,b);
-					glVertex3f(x*2-1, y*2-1, z*2-1);
+					glColor3f(r, g, b);
+					glVertex3f(x * 2 - 1, y * 2 - 1, z * 2 - 1);
 				}
 			}
 		}
 		glEnd();
 
 		//Plot nutrient points for each region
-		glPointSize(PixelSize*3);
+		glPointSize(PixelSize * 3);
 		glBegin(GL_POINTS);
 		for (int i = 0; i < RegionGroup.size(); i++)
 		{
@@ -422,7 +437,7 @@ void display(void)
 
 				int x = RegionGroup[i].GrowPoints[j].X;
 				int y = RegionGroup[i].GrowPoints[j].Y;
-				if (RegionGroup[i].Number == Figure[y][x])
+				if (RegionGroup[i].ID == Figure[y][x])
 				{
 					float r = RegionGroup[i].GrowPointColor.R;
 					float g = RegionGroup[i].GrowPointColor.G;
@@ -434,12 +449,11 @@ void display(void)
 					RegionGroup[i].GrowPoints[j].Normalize(x, y, z);
 
 					glColor3f(r, g, b);
-					glVertex3f(x*2-1, y*2-1, z*2-1);
+					glVertex3f(x * 2 - 1, y * 2 - 1, z * 2 - 1);
 				}
 			}
 		}
 		glEnd();
-
 
 		////Debug
 		//glPointSize(PixelSize);
@@ -462,7 +476,7 @@ void display(void)
 void RegionDraw(int Ix, int Iy)
 {
 
-	Region_Buffer.push_back(point(Ix, Iy, 0, number));
+	Region_Buffer.push_back(point(Ix, Iy, 0, currentid));
 
 	display();
 }
@@ -487,7 +501,7 @@ void mouse(int btn, int state, int mx, int my)
 		if (IsReigonComplete(Region_Buffer))
 		{
 			CreateRegion(Region_Buffer);
-			number++;
+			currentid++;
 
 			FigureRefresh();
 
@@ -525,7 +539,7 @@ void CSVOutput(vector<Region>& IRegionGroup)
 				float z = 0;
 				RegionGroup[i].GrowPoints[j].Normalize(x, y, z);
 
-				csvfile << IRegionGroup[i].GrowPoints[j].Number << ",";//Number
+				csvfile << IRegionGroup[i].GrowPoints[j].ID << ",";//ID
 				csvfile << x << ",";//X
 				csvfile << y << ",";//Y
 				csvfile << z ;//Z
