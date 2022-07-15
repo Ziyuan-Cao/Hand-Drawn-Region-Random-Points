@@ -16,7 +16,7 @@ using namespace std;
 *   2. Unable to delete existing region.
 *	3. Only supports drawing solid regions.
 *   4. Only use a simple random function to generate nutrient points.
-*   5. When drawing, the end point needs to be very close to the start 
+*   5. When drawing, the end point needs to be very close to the start
 *      point to complete the area drawing.
 *   6. border of Window cannot be drawn.
 *   7. ...
@@ -24,6 +24,8 @@ using namespace std;
 ///////////************************************//////////////
 
 int MaxGrowPoint = 50;
+int OutlineThick = 3;
+int borderlandGrowPoint = 200;
 
 int PixelSize = 3;
 int Width = 1000;
@@ -40,17 +42,17 @@ struct point
 	int Z = 0;
 	int ID = 0;
 
-	point(int ix, int iy,int iz, int iid) : X(ix), Y(iy),Z(iz), ID(iid) {}
+	point(int ix, int iy, int iz, int iid) : X(ix), Y(iy), Z(iz), ID(iid) {}
 
 
-	void Normalize(float & ox, float &oy, float &oz)
+	void Normalize(float& ox, float& oy, float& oz)
 	{
 		float w = 1.0 / (Height - 1);
 		float h = 1.0 / (Width - 1);
-		float l = 1.0 / (Length -1);
+		float l = 1.0 / (Length - 1);
 
-		ox = X * w ;
-		oy = (Height - Y) * h ;
+		ox = X * w;
+		oy = (Height - Y) * h;
 		oz = Z * l;
 	}
 };
@@ -71,6 +73,7 @@ struct Region
 	int Center_X = 0;
 	int Center_Y = 0;
 	int ID = 0;
+	int MaxGrowPointNumber = MaxGrowPoint;
 
 	vector<point> EdgePoints; //the edge of the region
 	vector<point> GrowPoints; //Nutrient points in each region
@@ -79,24 +82,58 @@ struct Region
 	color GrowPointColor;
 };
 
+#define borderLANDID  0
+
+struct borderLand : Region
+{
+	void Initialize()
+	{
+		MaxGrowPointNumber = borderlandGrowPoint;
+
+		X_max = Width - 1;
+		X_min = 1;
+		Y_max = Height - 1;
+		Y_min = 1;
+		Center_X = 0;
+		Center_Y = 0;
+		ID = borderLANDID;
+
+		EdgePoints.clear();
+		GrowPoints.clear();
+
+		RegionColor.B = 0;
+		RegionColor.G = 1;
+		RegionColor.R = 1;
+
+		GrowPointColor.B = 1;
+		GrowPointColor.G = 0;
+		GrowPointColor.R = 0;
+	}
+
+} *borderland;
+
 vector<vector<int>> Figure; //the final result map
-vector<Region> RegionGroup; 
+vector<Region> RegionGroup;
+
 
 //process variable
-int currentid = 0;
+
+int currentid = 1;
 bool Isdrawing = false;
 vector<point> Region_Buffer;
 
 
 //Use random functions to generate nutrient points in a region
-void GrowPointInsert(Region & IORegion)
+void GrowPointInsert(Region& IORegion)
 {
+	IORegion.GrowPoints.clear();
+
 	int count = 0;
-	int maxiter = MaxGrowPoint*100;
+	int maxiter = IORegion.MaxGrowPointNumber * 100;
 
 	srand(time(0));
 
-	while (count < MaxGrowPoint && maxiter > 0)
+	while (count < IORegion.MaxGrowPointNumber && maxiter > 0)
 	{
 		//Use bounding boxes to reduce the range of random point generation
 		int Rnd1 = rand();
@@ -106,7 +143,7 @@ void GrowPointInsert(Region & IORegion)
 		//Check if the generated point is inside this region
 		if (Figure[Ry][Rx] == IORegion.ID)
 		{
-			IORegion.GrowPoints.push_back(point(Rx, Ry,0, IORegion.ID));
+			IORegion.GrowPoints.push_back(point(Rx, Ry, 0, IORegion.ID));
 			count++;
 		}
 		maxiter--;
@@ -114,7 +151,7 @@ void GrowPointInsert(Region & IORegion)
 }
 
 //Fill the entire region with depth traversal Depth-First-Search
-void DeepFill(int Ix, int Iy,int Iid)
+void DeepFill(int Ix, int Iy, int Iid)
 {
 	stack<point> fillstack;
 
@@ -128,17 +165,17 @@ void DeepFill(int Ix, int Iy,int Iid)
 		Figure[y][x] = Iid;
 		if (y + 1 < Height && Figure[y + 1][x] != Iid)
 		{
-			fillstack.push(point(x, y + 1,0, Iid));
+			fillstack.push(point(x, y + 1, 0, Iid));
 		}
-		if (y-1 >= 0 && Figure[y-1][x] != Iid)
+		if (y - 1 >= 0 && Figure[y - 1][x] != Iid)
 		{
 			fillstack.push(point(x, y - 1, 0, Iid));
 		}
-		if (x + 1 < Width && Figure[y][x+1] != Iid)
+		if (x + 1 < Width && Figure[y][x + 1] != Iid)
 		{
 			fillstack.push(point(x + 1, y, 0, Iid));
 		}
-		if (x-1 >= 0 && Figure[y][x-1] != Iid)
+		if (x - 1 >= 0 && Figure[y][x - 1] != Iid)
 		{
 			fillstack.push(point(x - 1, y, 0, Iid));
 		}
@@ -236,13 +273,14 @@ void CreateRegion(vector<point>& IRegion_Buffer)
 	//and the connection function needs to be used to connect 
 	//the path into a loop.
 	Region Newregion;
+	Newregion.MaxGrowPointNumber = MaxGrowPoint;
 	Newregion.ID = currentid;
 	for (int i = 0; i < IRegion_Buffer.size() - 1; i++)
 	{
 		connect(IRegion_Buffer[i], IRegion_Buffer[i + 1], Newregion.EdgePoints);
 	}
 	connect(IRegion_Buffer[0], IRegion_Buffer.back(), Newregion.EdgePoints);
-	
+
 	//Build a bounding box to find the center point 
 	int x_max = 0;
 	int x_min = Width;
@@ -286,7 +324,7 @@ void CreateRegion(vector<point>& IRegion_Buffer)
 	//	});
 
 	//color
-	
+
 	srand(time(0));
 	Newregion.RegionColor.R = (float)(rand() % 30) / 30;
 	Newregion.RegionColor.G = (float)(rand() % 30) / 30;
@@ -295,6 +333,32 @@ void CreateRegion(vector<point>& IRegion_Buffer)
 	Newregion.GrowPointColor.G = 1.0 - Newregion.RegionColor.G;
 	Newregion.GrowPointColor.B = 1.0 - Newregion.RegionColor.B;
 	RegionGroup.push_back(Newregion);
+
+	//border's growpoints also increase
+	RegionGroup[0].MaxGrowPointNumber += borderlandGrowPoint;
+
+}
+
+void Createborderland(Region& IRegion)
+{
+	for (int j = 0; j < IRegion.EdgePoints.size(); j++)
+	{
+
+		int x = IRegion.EdgePoints[j].X;
+		int y = IRegion.EdgePoints[j].Y;
+
+
+		//To keep the loop closed at pixel accuracy,
+		//Need to enclose edge points with PixelSize
+		for (int k = 0; k < OutlineThick; k++)
+		{
+			for (int l = 0; l < OutlineThick; l++)
+			{
+				Figure[y + k][x + l] = borderLANDID;
+
+			}
+		}
+	}
 }
 
 //Refresh region buffer
@@ -310,10 +374,8 @@ void FigureRefresh()
 	}
 
 	//re-paint each Region
-	for (int i = 0; i < RegionGroup.size(); i++)
+	for (int i = 1; i < RegionGroup.size(); i++)
 	{
-
-
 		for (int j = 0; j < RegionGroup[i].EdgePoints.size(); j++)
 		{
 
@@ -327,19 +389,27 @@ void FigureRefresh()
 			{
 				for (int l = 0; l < PixelSize; l++)
 				{
-					Figure[y+k][x+l] = RegionGroup[i].ID;
+					Figure[y + k][x + l] = RegionGroup[i].ID;
+
 				}
 			}
 		}
+
 
 		//Fill the entire region with depth traversal
 		//begin with the center point 
 		DeepFill(RegionGroup[i].Center_X, RegionGroup[i].Center_Y, RegionGroup[i].ID);
 
+
+
+		Createborderland(RegionGroup[i]);
+
+
+
 	}
 
 	//Refresh grow points to avoid mixing
-	for (int i = 0; i < RegionGroup.size(); i++)
+	for (int i = 1; i < RegionGroup.size(); i++)
 	{
 		vector<point> NewGrowPoints;
 		for (int j = 0; j < RegionGroup[i].GrowPoints.size(); j++)
@@ -350,17 +420,17 @@ void FigureRefresh()
 			{
 				NewGrowPoints.push_back(RegionGroup[i].GrowPoints[j]);
 			}
-			
+
 		}
 		RegionGroup[i].GrowPoints.clear();
 		RegionGroup[i].GrowPoints = NewGrowPoints;
 	}
-	
+
 }
 
 //Check if two points are close, 
 //the range is PixelSize
-bool IsClosePoint(point IP1,point IP2)
+bool IsClosePoint(point IP1, point IP2)
 {
 	bool pointcmp = true;
 
@@ -380,7 +450,7 @@ void display(void)
 {
 	float w = 2.0 / (Height - 1);
 	float h = 2.0 / (Width - 1);
-	
+
 	if (Isdrawing)
 	{
 		//the process of drawing the mouse path with red points
@@ -392,8 +462,8 @@ void display(void)
 			float x = 0;
 			float y = 0;
 			float z = 0;
-			Region_Buffer[i].Normalize(x,y,z);
-			glVertex3f(x*2-1, y*2-1, z*2-1);
+			Region_Buffer[i].Normalize(x, y, z);
+			glVertex3f(x * 2 - 1, y * 2 - 1, z * 2 - 1);
 		}
 		glEnd();
 	}
@@ -469,7 +539,7 @@ void display(void)
 		//glEnd();
 	}
 
-	glFlush(); 
+	glFlush();
 }
 
 
@@ -483,16 +553,16 @@ void RegionDraw(int Ix, int Iy)
 
 
 
-void mouse(int btn, int state, int mx, int my) 
+void mouse(int btn, int state, int mx, int my)
 {
 	//Record the mouse track while holding down the left mouse button
 	if (state == GLUT_DOWN)
 	{
 
-			Isdrawing = true;
-			glutMotionFunc(RegionDraw);
+		Isdrawing = true;
+		glutMotionFunc(RegionDraw);
 	}
-	else if(state == GLUT_UP)
+	else if (state == GLUT_UP)
 	{
 		//Detect whether the track is closed loop when the left button is released
 		// Ture for new region of coral
@@ -509,6 +579,7 @@ void mouse(int btn, int state, int mx, int my)
 			//only one times
 			GrowPointInsert(RegionGroup.back());
 
+			GrowPointInsert(RegionGroup[0]);
 
 			Region_Buffer.clear();
 		}
@@ -530,31 +601,33 @@ void CSVOutput(vector<Region>& IRegionGroup)
 	csvfile.open(csvPath, ios::out);
 
 	for (int i = 0; i < IRegionGroup.size(); i++)
+	{
+		for (int j = 0; j < IRegionGroup[i].GrowPoints.size(); j++)
 		{
-			for (int j = 0; j < IRegionGroup[i].GrowPoints.size(); j++)
-			{
 
-				float x = 0;
-				float y = 0;
-				float z = 0;
-				RegionGroup[i].GrowPoints[j].Normalize(x, y, z);
+			float x = 0;
+			float y = 0;
+			float z = 0;
+			RegionGroup[i].GrowPoints[j].Normalize(x, y, z);
 
-				csvfile << IRegionGroup[i].GrowPoints[j].ID << ",";//ID
-				csvfile << x << ",";//X
-				csvfile << y << ",";//Y
-				csvfile << z ;//Z
-				csvfile << "\n";
-			}
+			csvfile << IRegionGroup[i].GrowPoints[j].ID << ",";//ID
+			csvfile << x << ",";//X
+			csvfile << y << ",";//Y
+			csvfile << z;//Z
+			csvfile << "\n";
 		}
+	}
 	csvfile.close();
 
 	return;
 }
 
-void keyboard(unsigned char key, int mx, int my) 
+void keyboard(unsigned char key, int mx, int my)
 {
-	switch (key) 
+	switch (key)
 	{
+	case 'O':
+		GrowPointInsert(RegionGroup[0]);
 	case 'c':
 		CSVOutput(RegionGroup);
 	}
@@ -588,22 +661,34 @@ int main(int argc, char** argv)
 	cout << "Max Grow Points number in each region: ";
 	cin >> MaxGrowPoint;
 
-	glutInit(&argc, argv); 
+	cout << "thick of outline: ";
+	cin >> OutlineThick;
+
+	cout << "Outline's Grow Points number: ";
+	cin >> borderlandGrowPoint;
+
+	RegionGroup.push_back(borderLand());
+	borderland = (borderLand*)&RegionGroup[0];
+
+	borderland->Initialize();
+
+
+	glutInit(&argc, argv);
 	glutInitDisplayMode(GLUT_SINGLE | GLUT_RGB);
 	glutInitWindowSize(Width, Height);
 	glutCreateWindow("SAN GO");
-  
+
 	myinit();
 
 	glutReshapeFunc(myReshape);
 
-	glutMouseFunc(mouse); 
-  
+	glutMouseFunc(mouse);
+
 	glutKeyboardFunc(keyboard);
 
-	glutDisplayFunc(display); 
+	glutDisplayFunc(display);
 	glutMainLoop();
-  
+
 	return 0;
 }
 
