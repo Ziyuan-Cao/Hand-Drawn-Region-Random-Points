@@ -82,21 +82,20 @@ struct Region
 	color GrowPointColor;
 };
 
-#define borderLANDID  0
-
 struct borderLand : Region
 {
-	void Initialize()
+	int Thick = 0;
+	void Initialize(int IID)
 	{
 		MaxGrowPointNumber = borderlandGrowPoint;
-
+		Thick = OutlineThick;
 		X_max = Width - 1;
 		X_min = 1;
 		Y_max = Height - 1;
 		Y_min = 1;
 		Center_X = 0;
 		Center_Y = 0;
-		ID = borderLANDID;
+		ID = IID;
 
 		EdgePoints.clear();
 		GrowPoints.clear();
@@ -110,18 +109,37 @@ struct borderLand : Region
 		GrowPointColor.R = 0;
 	}
 
-} *borderland;
+};
+
+struct Creator
+{
+	Region CoralRegion;
+	borderLand Borderland;
+};
+
+
 
 vector<vector<int>> Figure; //the final result map
-vector<Region> RegionGroup;
+vector<Creator> CoralGroup;
 
 
 //process variable
 
-int currentid = 1;
+int currentid = 0;
 bool Isdrawing = false;
 vector<point> Region_Buffer;
 
+void ComfirmRegionGrowPointNumber()
+{
+	cout << "Max Grow Points number in this region: ";
+	cin >> MaxGrowPoint;
+
+	cout << "thick of outline: ";
+	cin >> OutlineThick;
+
+	cout << "Outline's Grow Points number: ";
+	cin >> borderlandGrowPoint;
+}
 
 //Use random functions to generate nutrient points in a region
 void GrowPointInsert(Region& IORegion)
@@ -273,6 +291,7 @@ void CreateRegion(vector<point>& IRegion_Buffer)
 	//and the connection function needs to be used to connect 
 	//the path into a loop.
 	Region Newregion;
+	Creator NewCoral;
 	Newregion.MaxGrowPointNumber = MaxGrowPoint;
 	Newregion.ID = currentid;
 	for (int i = 0; i < IRegion_Buffer.size() - 1; i++)
@@ -332,15 +351,16 @@ void CreateRegion(vector<point>& IRegion_Buffer)
 	Newregion.GrowPointColor.R = 1.0 - Newregion.RegionColor.R;
 	Newregion.GrowPointColor.G = 1.0 - Newregion.RegionColor.G;
 	Newregion.GrowPointColor.B = 1.0 - Newregion.RegionColor.B;
-	RegionGroup.push_back(Newregion);
 
-	//border's growpoints also increase
-	RegionGroup[0].MaxGrowPointNumber += borderlandGrowPoint;
+	NewCoral.CoralRegion = move(Newregion);
+	NewCoral.Borderland.Initialize(currentid+1);
+	CoralGroup.push_back(NewCoral);
 
 }
 
-void Createborderland(Region& IRegion)
+void Createborderland(Creator& ICreator)
 {
+	Region& IRegion = ICreator.CoralRegion;
 	for (int j = 0; j < IRegion.EdgePoints.size(); j++)
 	{
 
@@ -350,11 +370,11 @@ void Createborderland(Region& IRegion)
 
 		//To keep the loop closed at pixel accuracy,
 		//Need to enclose edge points with PixelSize
-		for (int k = 0; k < OutlineThick; k++)
+		for (int k = 0; k < ICreator.Borderland.Thick; k++)
 		{
-			for (int l = 0; l < OutlineThick; l++)
+			for (int l = 0; l < ICreator.Borderland.Thick; l++)
 			{
-				Figure[y + k][x + l] = borderLANDID;
+				Figure[y + k][x + l] = ICreator.Borderland.ID;
 
 			}
 		}
@@ -374,13 +394,15 @@ void FigureRefresh()
 	}
 
 	//re-paint each Region
-	for (int i = 1; i < RegionGroup.size(); i++)
+	for (int i = 0; i < CoralGroup.size(); i++)
 	{
-		for (int j = 0; j < RegionGroup[i].EdgePoints.size(); j++)
+		Region& IRegion = CoralGroup[i].CoralRegion;
+
+		for (int j = 0; j < IRegion.EdgePoints.size(); j++)
 		{
 
-			int x = RegionGroup[i].EdgePoints[j].X;
-			int y = RegionGroup[i].EdgePoints[j].Y;
+			int x = IRegion.EdgePoints[j].X;
+			int y = IRegion.EdgePoints[j].Y;
 
 
 			//To keep the loop closed at pixel accuracy,
@@ -389,7 +411,7 @@ void FigureRefresh()
 			{
 				for (int l = 0; l < PixelSize; l++)
 				{
-					Figure[y + k][x + l] = RegionGroup[i].ID;
+					Figure[y + k][x + l] = IRegion.ID;
 
 				}
 			}
@@ -398,32 +420,33 @@ void FigureRefresh()
 
 		//Fill the entire region with depth traversal
 		//begin with the center point 
-		DeepFill(RegionGroup[i].Center_X, RegionGroup[i].Center_Y, RegionGroup[i].ID);
+		DeepFill(IRegion.Center_X, IRegion.Center_Y, IRegion.ID);
 
 
 
-		Createborderland(RegionGroup[i]);
+		Createborderland(CoralGroup[i]);
 
 
 
 	}
 
 	//Refresh grow points to avoid mixing
-	for (int i = 1; i < RegionGroup.size(); i++)
+	for (int i = 0; i < CoralGroup.size(); i++)
 	{
+		Region& IRegion = CoralGroup[i].CoralRegion;
 		vector<point> NewGrowPoints;
-		for (int j = 0; j < RegionGroup[i].GrowPoints.size(); j++)
+		for (int j = 0; j < IRegion.GrowPoints.size(); j++)
 		{
-			int x = RegionGroup[i].GrowPoints[j].X;
-			int y = RegionGroup[i].GrowPoints[j].Y;
-			if (RegionGroup[i].ID == Figure[y][x])
+			int x = IRegion.GrowPoints[j].X;
+			int y = IRegion.GrowPoints[j].Y;
+			if (IRegion.ID == Figure[y][x])
 			{
-				NewGrowPoints.push_back(RegionGroup[i].GrowPoints[j]);
+				NewGrowPoints.push_back(IRegion.GrowPoints[j]);
 			}
 
 		}
-		RegionGroup[i].GrowPoints.clear();
-		RegionGroup[i].GrowPoints = NewGrowPoints;
+		IRegion.GrowPoints.clear();
+		IRegion.GrowPoints = NewGrowPoints;
 	}
 
 }
@@ -481,17 +504,36 @@ void display(void)
 			{
 				if (Figure[i][j] > -1)
 				{
-					float r = RegionGroup[Figure[i][j]].RegionColor.R;
-					float g = RegionGroup[Figure[i][j]].RegionColor.G;
-					float b = RegionGroup[Figure[i][j]].RegionColor.B;
+					if (Figure[i][j] % 2 == 0)
+					{
+						Region& IRegion = CoralGroup[Figure[i][j]/2].CoralRegion;
+						float r = IRegion.RegionColor.R;
+						float g = IRegion.RegionColor.G;
+						float b = IRegion.RegionColor.B;
 
-					point ijpoint(j, i, 0, -1);
-					float x = 0;
-					float y = 0;
-					float z = 0;
-					ijpoint.Normalize(x, y, z);
-					glColor3f(r, g, b);
-					glVertex3f(x * 2 - 1, y * 2 - 1, z * 2 - 1);
+						point ijpoint(j, i, 0, -1);
+						float x = 0;
+						float y = 0;
+						float z = 0;
+						ijpoint.Normalize(x, y, z);
+						glColor3f(r, g, b);
+						glVertex3f(x * 2 - 1, y * 2 - 1, z * 2 - 1);
+					}
+					else
+					{
+						Region& IRegion = CoralGroup[(Figure[i][j]-1)/2].Borderland;
+						float r = IRegion.RegionColor.R;
+						float g = IRegion.RegionColor.G;
+						float b = IRegion.RegionColor.B;
+
+						point ijpoint(j, i, 0, -1);
+						float x = 0;
+						float y = 0;
+						float z = 0;
+						ijpoint.Normalize(x, y, z);
+						glColor3f(r, g, b);
+						glVertex3f(x * 2 - 1, y * 2 - 1, z * 2 - 1);
+					}
 				}
 			}
 		}
@@ -500,23 +542,46 @@ void display(void)
 		//Plot nutrient points for each region
 		glPointSize(PixelSize * 3);
 		glBegin(GL_POINTS);
-		for (int i = 0; i < RegionGroup.size(); i++)
+		for (int i = 0; i < CoralGroup.size(); i++)
 		{
-			for (int j = 0; j < RegionGroup[i].GrowPoints.size(); j++)
+			Region& IRegion = CoralGroup[i].CoralRegion;
+			for (int j = 0; j < IRegion.GrowPoints.size(); j++)
 			{
 
-				int x = RegionGroup[i].GrowPoints[j].X;
-				int y = RegionGroup[i].GrowPoints[j].Y;
-				if (RegionGroup[i].ID == Figure[y][x])
+				int x = IRegion.GrowPoints[j].X;
+				int y = IRegion.GrowPoints[j].Y;
+				if (IRegion.ID == Figure[y][x])
 				{
-					float r = RegionGroup[i].GrowPointColor.R;
-					float g = RegionGroup[i].GrowPointColor.G;
-					float b = RegionGroup[i].GrowPointColor.B;
+					float r = IRegion.GrowPointColor.R;
+					float g = IRegion.GrowPointColor.G;
+					float b = IRegion.GrowPointColor.B;
 
 					float x = 0;
 					float y = 0;
 					float z = 0;
-					RegionGroup[i].GrowPoints[j].Normalize(x, y, z);
+					IRegion.GrowPoints[j].Normalize(x, y, z);
+
+					glColor3f(r, g, b);
+					glVertex3f(x * 2 - 1, y * 2 - 1, z * 2 - 1);
+				}
+			}
+
+			borderLand IBorderLand = CoralGroup[i].Borderland;
+			for (int j = 0; j < IBorderLand.GrowPoints.size(); j++)
+			{
+
+				int x = IBorderLand.GrowPoints[j].X;
+				int y = IBorderLand.GrowPoints[j].Y;
+				if (IBorderLand.ID == Figure[y][x])
+				{
+					float r = IBorderLand.GrowPointColor.R;
+					float g = IBorderLand.GrowPointColor.G;
+					float b = IBorderLand.GrowPointColor.B;
+
+					float x = 0;
+					float y = 0;
+					float z = 0;
+					IBorderLand.GrowPoints[j].Normalize(x, y, z);
 
 					glColor3f(r, g, b);
 					glVertex3f(x * 2 - 1, y * 2 - 1, z * 2 - 1);
@@ -570,16 +635,18 @@ void mouse(int btn, int state, int mx, int my)
 		Isdrawing = false;
 		if (IsReigonComplete(Region_Buffer))
 		{
+			ComfirmRegionGrowPointNumber();
+
 			CreateRegion(Region_Buffer);
-			currentid++;
+			currentid += 2;
 
 			FigureRefresh();
 
 			//Randomly generate nutrient points in the area
 			//only one times
-			GrowPointInsert(RegionGroup.back());
+			GrowPointInsert(CoralGroup.back().CoralRegion);
 
-			GrowPointInsert(RegionGroup[0]);
+			GrowPointInsert(CoralGroup.back().Borderland);
 
 			Region_Buffer.clear();
 		}
@@ -593,24 +660,57 @@ void mouse(int btn, int state, int mx, int my)
 	return;
 }
 
-void CSVOutput(vector<Region>& IRegionGroup)
+void CSVOutput(vector<Creator>& ICoralGroup)
 {
 
 	string csvPath = "GrowPoint.csv";
 	ofstream csvfile;
+	
+
+	struct Brodpoint
+	{
+		int ID = -1;
+		float x = 0;
+		float y = 0;
+		float z = 0;
+
+	};
+	vector<Brodpoint> BGP;
+	for (int i = 0; i < ICoralGroup.size(); i++)
+	{
+		auto& GP = ICoralGroup[i].Borderland.GrowPoints;
+		for (int j = 0; j < GP.size(); j++)
+		{
+			Brodpoint gp;
+			gp.ID = 0;
+			GP[j].Normalize(gp.x, gp.y, gp.z);
+			BGP.push_back(gp);
+		}
+	}
+
 	csvfile.open(csvPath, ios::out);
 
-	for (int i = 0; i < IRegionGroup.size(); i++)
+	for(int i = 0; i < BGP.size();i++)
 	{
-		for (int j = 0; j < IRegionGroup[i].GrowPoints.size(); j++)
+		csvfile << BGP[i].ID << ",";//ID
+		csvfile << BGP[i].x << ",";//X
+		csvfile << BGP[i].y << ",";//Y
+		csvfile << BGP[i].z;//Z
+		csvfile << "\n";
+	}
+
+	for (int i = 0; i < ICoralGroup.size(); i++)
+	{
+		Region& IRegion = ICoralGroup[i].CoralRegion;
+		for (int j = 0; j < IRegion.GrowPoints.size(); j++)
 		{
 
 			float x = 0;
 			float y = 0;
 			float z = 0;
-			RegionGroup[i].GrowPoints[j].Normalize(x, y, z);
+			IRegion.GrowPoints[j].Normalize(x, y, z);
 
-			csvfile << IRegionGroup[i].GrowPoints[j].ID << ",";//ID
+			csvfile << i+1 << ",";//ID
 			csvfile << x << ",";//X
 			csvfile << y << ",";//Y
 			csvfile << z;//Z
@@ -626,10 +726,8 @@ void keyboard(unsigned char key, int mx, int my)
 {
 	switch (key)
 	{
-	case 'O':
-		GrowPointInsert(RegionGroup[0]);
 	case 'c':
-		CSVOutput(RegionGroup);
+		CSVOutput(CoralGroup);
 	}
 	display();
 }
@@ -658,19 +756,9 @@ void myinit()
 
 int main(int argc, char** argv)
 {
-	cout << "Max Grow Points number in each region: ";
-	cin >> MaxGrowPoint;
-
-	cout << "thick of outline: ";
-	cin >> OutlineThick;
-
-	cout << "Outline's Grow Points number: ";
-	cin >> borderlandGrowPoint;
-
-	RegionGroup.push_back(borderLand());
-	borderland = (borderLand*)&RegionGroup[0];
-
-	borderland->Initialize();
+	//CoralGroup.push_back(borderLand());
+	//borderland = (borderLand*)&CoralGroup[0];
+	//borderland->Initialize();
 
 
 	glutInit(&argc, argv);
