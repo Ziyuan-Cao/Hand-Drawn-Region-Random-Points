@@ -8,6 +8,7 @@
 #include <vector>
 #include <stack>
 #include <ctime>
+
 using namespace std;
 
 ///////////************************************//////////////
@@ -26,6 +27,7 @@ using namespace std;
 int MaxGrowPoint = 50;
 int OutlineThick = 3;
 int borderlandGrowPoint = 200;
+double MaxHeight = 1;
 
 int PixelSize = 3;
 int Width = 1000;
@@ -139,6 +141,10 @@ void ComfirmRegionGrowPointNumber()
 
 	cout << "Outline's Grow Points number: ";
 	cin >> borderlandGrowPoint;
+
+	cout << " Max height 0~1: ";
+	cin >> MaxHeight;
+
 }
 
 //Use random functions to generate nutrient points in a region
@@ -156,12 +162,15 @@ void GrowPointInsert(Region& IORegion)
 		//Use bounding boxes to reduce the range of random point generation
 		int Rnd1 = rand();
 		int Rnd2 = rand();
+		int Rnd3 = rand();
 		int Rx = Rnd1 % (IORegion.X_max - IORegion.X_min) + IORegion.X_min;
 		int Ry = Rnd2 % (IORegion.Y_max - IORegion.Y_min) + IORegion.Y_min;
+		int Rz = Rnd3 % (int)(Length * MaxHeight);
+
 		//Check if the generated point is inside this region
 		if (Figure[Ry][Rx] == IORegion.ID)
 		{
-			IORegion.GrowPoints.push_back(point(Rx, Ry, 0, IORegion.ID));
+			IORegion.GrowPoints.push_back(point(Rx, Ry, Rz, IORegion.ID));
 			count++;
 		}
 		maxiter--;
@@ -419,7 +428,9 @@ void FigureRefresh()
 
 
 		//Fill the entire region with depth traversal
-		//begin with the center point 
+		//begin with the center point
+
+		
 		DeepFill(IRegion.Center_X, IRegion.Center_Y, IRegion.ID);
 
 
@@ -666,6 +677,7 @@ void CSVOutput(vector<Creator>& ICoralGroup)
 	string csvPath = "GrowPoint.csv";
 	ofstream csvfile;
 	
+	long growpointcount = 0;
 
 	struct Brodpoint
 	{
@@ -679,6 +691,7 @@ void CSVOutput(vector<Creator>& ICoralGroup)
 	for (int i = 0; i < ICoralGroup.size(); i++)
 	{
 		auto& GP = ICoralGroup[i].Borderland.GrowPoints;
+		growpointcount += ICoralGroup[i].CoralRegion.GrowPoints.size();
 		for (int j = 0; j < GP.size(); j++)
 		{
 			Brodpoint gp;
@@ -690,12 +703,17 @@ void CSVOutput(vector<Creator>& ICoralGroup)
 
 	csvfile.open(csvPath, ios::out);
 
+	csvfile << ICoralGroup.size() << "," << growpointcount << "\n";
+	//region count 
+	//grow proint count 
+	//
+
 	for(int i = 0; i < BGP.size();i++)
 	{
 		csvfile << BGP[i].ID << ",";//ID
 		csvfile << BGP[i].x << ",";//X
-		csvfile << BGP[i].y << ",";//Y
-		csvfile << BGP[i].z;//Z
+		csvfile << BGP[i].z << ",";//Y
+		csvfile << BGP[i].y;//Z
 		csvfile << "\n";
 	}
 
@@ -712,8 +730,8 @@ void CSVOutput(vector<Creator>& ICoralGroup)
 
 			csvfile << i+1 << ",";//ID
 			csvfile << x << ",";//X
-			csvfile << y << ",";//Y
-			csvfile << z;//Z
+			csvfile << z << ",";//Y
+			csvfile << y;//Z
 			csvfile << "\n";
 		}
 	}
