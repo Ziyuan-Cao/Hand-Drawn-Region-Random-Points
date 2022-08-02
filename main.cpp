@@ -696,6 +696,7 @@ void CSVOutput(vector<Creator>& ICoralGroup)
 	{
 		auto& GP = ICoralGroup[i].Borderland.GrowPoints;
 		growpointcount += ICoralGroup[i].CoralRegion.GrowPoints.size();
+		growpointcount += ICoralGroup[i].Borderland.GrowPoints.size();
 		for (int j = 0; j < GP.size(); j++)
 		{
 			Brodpoint gp;
