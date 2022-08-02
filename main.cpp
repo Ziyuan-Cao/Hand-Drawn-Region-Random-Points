@@ -476,6 +476,10 @@ bool IsClosePoint(point IP1, point IP2)
 //Check if the last point of route is closed with the first point
 bool IsReigonComplete(vector<point>& Iregionbuffer)
 {
+	if (Iregionbuffer.size() < 20)
+	{
+		return false;
+	}
 	return IsClosePoint(Iregionbuffer.front(), Iregionbuffer.back());
 }
 
