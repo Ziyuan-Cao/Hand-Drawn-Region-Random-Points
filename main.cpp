@@ -36,6 +36,9 @@ int Length = 1000;
 int width = 0;
 int height = 0;
 
+bool Ispaint = false;
+
+
 //The data of the point contains the markers of the xy coordinates and the region ID
 struct point
 {
@@ -61,9 +64,9 @@ struct point
 
 struct color
 {
-	float R = 0;
-	float G = 0;
-	float B = 0;
+	float R = 0; // h
+	float G = 0; // s
+	float B = 0; // v
 };
 
 struct Region
@@ -79,8 +82,9 @@ struct Region
 
 	vector<point> EdgePoints; //the edge of the region
 	vector<point> GrowPoints; //Nutrient points in each region
-
+	vector<point> DrawPoints;
 	color RegionColor;
+	int Hcolor = 0;
 	color GrowPointColor;
 };
 
@@ -101,7 +105,7 @@ struct borderLand : Region
 
 		EdgePoints.clear();
 		GrowPoints.clear();
-
+		//borderLandColor
 		RegionColor.B = 0;
 		RegionColor.G = 1;
 		RegionColor.R = 1;
@@ -130,6 +134,48 @@ vector<Creator> CoralGroup;
 int currentid = 0;
 bool Isdrawing = false;
 vector<point> Region_Buffer;
+
+
+void HSVtoRGB(float H, float S, float V, color & Ocolor) {
+	if (H > 360 || H < 0 || S>100 || S < 0 || V>100 || V < 0) {
+		cout << "The givem HSV values are not in valid range" << endl;
+		return;
+	}
+	float s = S / 100;
+	float v = V / 100;
+	float C = s * v;
+	float X = C * (1 - abs(fmod(H / 60.0, 2) - 1));
+	float m = v - C;
+	float r, g, b;
+	if (H >= 0 && H < 60) {
+		r = C, g = X, b = 0;
+	}
+	else if (H >= 60 && H < 120) {
+		r = X, g = C, b = 0;
+	}
+	else if (H >= 120 && H < 180) {
+		r = 0, g = C, b = X;
+	}
+	else if (H >= 180 && H < 240) {
+		r = 0, g = X, b = C;
+	}
+	else if (H >= 240 && H < 300) {
+		r = X, g = 0, b = C;
+	}
+	else {
+		r = C, g = 0, b = X;
+	}
+	int R = (r + m) * 255;
+	int G = (g + m) * 255;
+	int B = (b + m) * 255;
+
+	Ocolor.R = (float)R / 255;
+	Ocolor.G = (float)G / 255;
+	Ocolor.B = (float)B / 255;
+	//cout << "R : " << R << endl;
+	//cout << "G : " << G << endl;
+	//cout << "B : " << B << endl;
+}
 
 void ComfirmRegionGrowPointNumber()
 {
@@ -303,6 +349,8 @@ void CreateRegion(vector<point>& IRegion_Buffer)
 	Creator NewCoral;
 	Newregion.MaxGrowPointNumber = MaxGrowPoint;
 	Newregion.ID = currentid;
+	Newregion.DrawPoints = IRegion_Buffer;
+
 	for (int i = 0; i < IRegion_Buffer.size() - 1; i++)
 	{
 		connect(IRegion_Buffer[i], IRegion_Buffer[i + 1], Newregion.EdgePoints);
@@ -351,15 +399,25 @@ void CreateRegion(vector<point>& IRegion_Buffer)
 	//		}
 	//	});
 
-	//color
-
+	////RegionColor & GrowPointColor
 	srand(time(0));
-	Newregion.RegionColor.R = (float)(rand() % 30) / 30;
-	Newregion.RegionColor.G = (float)(rand() % 30) / 30;
-	Newregion.RegionColor.B = (float)(rand() % 30) / 30;
+	color color_buf;
+	float H = (float)(rand() % 360); // 0 /360
+	float S = 60.f;
+	float V = 99.f ;
+	HSVtoRGB(H,S,V, color_buf);
+	Newregion.Hcolor = H / 360 * 100; 
+	Newregion.RegionColor = color_buf;
 	Newregion.GrowPointColor.R = 1.0 - Newregion.RegionColor.R;
 	Newregion.GrowPointColor.G = 1.0 - Newregion.RegionColor.G;
 	Newregion.GrowPointColor.B = 1.0 - Newregion.RegionColor.B;
+
+	//Newregion.RegionColor.R = (float)(rand() % 30) / 30;
+	//Newregion.RegionColor.G = (float)(rand() % 30) / 30;
+	//Newregion.RegionColor.B = (float)(rand() % 30) / 30;
+	//Newregion.GrowPointColor.R = 1.0 - Newregion.RegionColor.R;
+	//Newregion.GrowPointColor.G = 1.0 - Newregion.RegionColor.G;
+	//Newregion.GrowPointColor.B = 1.0 - Newregion.RegionColor.B;
 
 	NewCoral.CoralRegion = move(Newregion);
 	NewCoral.Borderland.Initialize(currentid+1);
@@ -493,6 +551,7 @@ void display(void)
 	{
 		//the process of drawing the mouse path with red points
 		glPointSize(PixelSize);
+		//DrawingColor
 		glColor3f(1.0, 0, 0);
 		glBegin(GL_POINTS);
 		for (int i = 0; i < Region_Buffer.size(); i++)
@@ -504,6 +563,28 @@ void display(void)
 			glVertex3f(x * 2 - 1, y * 2 - 1, z * 2 - 1);
 		}
 		glEnd();
+	}
+	else if (!Ispaint)
+	{
+		glClear(GL_COLOR_BUFFER_BIT);
+		glLoadIdentity();
+
+		for(int i = 0; i < CoralGroup.size();i++)
+		{
+			glPointSize(PixelSize);
+			//DrawingColor
+			glColor3f(1.0, 0, 0);
+			glBegin(GL_POINTS);
+			for (int j = 0; j < CoralGroup[i].CoralRegion.DrawPoints.size(); j++)
+			{
+				float x = 0;
+				float y = 0;
+				float z = 0;
+				CoralGroup[i].CoralRegion.DrawPoints[j].Normalize(x, y, z);
+				glVertex3f(x * 2 - 1, y * 2 - 1, z * 2 - 1);
+			}
+			glEnd();
+		}
 	}
 	else
 	{
@@ -736,7 +817,8 @@ void CSVOutput(vector<Creator>& ICoralGroup)
 			csvfile << i+1 << ",";//ID
 			csvfile << x << ",";//X
 			csvfile << z << ",";//Y
-			csvfile << y;//Z
+			csvfile << y << ",";//Z
+			csvfile << IRegion.Hcolor;
 			csvfile << "\n";
 		}
 	}
@@ -751,6 +833,8 @@ void keyboard(unsigned char key, int mx, int my)
 	{
 	case 'c':
 		CSVOutput(CoralGroup);
+	case 'p':
+		Ispaint = !Ispaint;
 	}
 	display();
 }
@@ -774,7 +858,8 @@ void myinit()
 {
 	Figure.assign(Width, vector<int>(Height, -1));
 
-	glClearColor(1, 1, 1, 1);
+	//Background_Color
+	glClearColor(0, 0, 0, 1);
 }
 
 int main(int argc, char** argv)
