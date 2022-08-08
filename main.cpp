@@ -569,22 +569,51 @@ void display(void)
 		glClear(GL_COLOR_BUFFER_BIT);
 		glLoadIdentity();
 
-		for(int i = 0; i < CoralGroup.size();i++)
+		//for(int i = 0; i < CoralGroup.size();i++)
+		//{
+		//	glPointSize(PixelSize);
+		//	//DrawingColor
+		//	glColor3f(1.0, 0, 0);
+		//	glBegin(GL_POINTS);
+		//	for (int j = 0; j < CoralGroup[i].CoralRegion.DrawPoints.size(); j++)
+		//	{
+		//		float x = 0;
+		//		float y = 0;
+		//		float z = 0;
+		//		CoralGroup[i].CoralRegion.DrawPoints[j].Normalize(x, y, z);
+		//		glVertex3f(x * 2 - 1, y * 2 - 1, z * 2 - 1);
+		//	}
+		//	glEnd();
+
+		//}
+
+		glPointSize(PixelSize);
+		glBegin(GL_POINTS);
+		for (int i = 0; i < Height; i++)
 		{
-			glPointSize(PixelSize);
-			//DrawingColor
-			glColor3f(1.0, 0, 0);
-			glBegin(GL_POINTS);
-			for (int j = 0; j < CoralGroup[i].CoralRegion.DrawPoints.size(); j++)
+			for (int j = 0; j < Width; j++)
 			{
-				float x = 0;
-				float y = 0;
-				float z = 0;
-				CoralGroup[i].CoralRegion.DrawPoints[j].Normalize(x, y, z);
-				glVertex3f(x * 2 - 1, y * 2 - 1, z * 2 - 1);
+				if (Figure[i][j] > -1)
+				{
+					if (Figure[i][j] % 2 == 0)
+					{
+						Region& IRegion = CoralGroup[Figure[i][j] / 2].CoralRegion;
+						float r = IRegion.RegionColor.R;
+						float g = IRegion.RegionColor.G;
+						float b = IRegion.RegionColor.B;
+
+						point ijpoint(j, i, 0, -1);
+						float x = 0;
+						float y = 0;
+						float z = 0;
+						ijpoint.Normalize(x, y, z);
+						glColor3f(r, g, b);
+						glVertex3f(x * 2 - 1, y * 2 - 1, z * 2 - 1);
+					}
+				}
 			}
-			glEnd();
 		}
+		glEnd();
 	}
 	else
 	{
