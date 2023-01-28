@@ -1,11 +1,14 @@
 # Hand-Drawn-Region-Random-Points
 
 Require:
+Windows 10
 Visual Studio 2019
 
 Install:
 Double click .sln
 
+video & poster:
+https://mukai-lab.org/projects/procedural-coral-modeling/
 
 Notice：
 1. Region can only be drawn sequentially and overlaid.
